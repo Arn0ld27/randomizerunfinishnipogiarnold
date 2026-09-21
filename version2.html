@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Box Roulette 🎲</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: radial-gradient(circle at 50% 0%, #1a1a2e, #0a0a15 70%);
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    user-select: none;
+  }
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    flex-shrink: 0;
+    gap: 12px;
+  }
+
+  h1 {
+    font-size: 1.1rem;
+    background: linear-gradient(90deg, #00ff88, #00ccff, #ff00cc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: 2px;
+    white-space: nowrap;
+  }
+
+  .status {
+    font-size: 0.85rem;
+    color: #aaa;
+    letter-spacing: 1px;
+    text-align: right;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .status .phase {
+    font-weight: 700;
+    transition: color 0.2s;
+  }
+
+  .counter {
+    font-size: 0.8rem;
+    color: #00ff88;
+    font-weight: 700;
+    letter-spacing: 1px;
+    background: rgba(0,255,136,0.1);
+    padding: 4px 12px;
+    border-radius: 20px;
+    border: 1px solid rgba(0,255,136,0.3);
+    white-space: nowrap;
+  }
+
+  .grid-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 10px;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    grid-template-rows: repeat(5, 1fr);
+    gap: 5px;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    transition: filter 0.2s;
+    position: relative;
+  }
+
+  .grid.tension {
+    filter: brightness(1.15) contrast(1.1);
+  }
+
+  .grid.shake {
+    animation: screenShake 0.08s infinite;
+  }
+
+  @keyframes screenShake {
+    0%, 100% { transform: translate(0, 0); }
+    25% { transform: translate(-2px, 2px); }
+    75% { transform: translate(2px, -2px); }
+  }
+
+  .box {
+    background: #14142a;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: background 0.08s, box-shadow 0.08s, transform 0.08s;
+    overflow: hidden;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .box .num {
+    position: absolute;
+    top: 3px;
+    left: 5px;
+    font-size: clamp(0.5rem, 1.1vw, 0.75rem);
+    color: #333;
+    z-index: 3;
+    font-weight: 700;
+    transition: opacity 0.2s;
+  }
+
+  .box.used {
+    background: #1a1f2e !important;
+    border-color: #4488ff !important;
+    box-shadow: none !important;
+    transform: none !important;
+    animation: none !important;
+    opacity: 0.75;
+  }
+
+  .box.used .num {
+    color: #5577aa !important;
+    opacity: 0.6;
+  }
+
+  .box.used .label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(0.45rem, 0.9vw, 0.7rem);
+    color: #88aaff;
+    text-align: center;
+    padding: 4px;
+    line-height: 1.1;
+    z-index: 2;
+    word-break: break-word;
+  }
+
+  .box.used.landed {
+    background: linear-gradient(135deg, #ffcc00, #ff6600) !important;
+    border: 2px solid #ffee88 !important;
+    box-shadow:
+      0 0 40px #ffaa00,
+      0 0 80px #ff6600,
+      0 0 120px rgba(255, 102, 0, 0.6) !important;
+    opacity: 1;
+    transform: scale(1.35);
+    z-index: 10;
+    animation: pulse 0.5s ease-in-out infinite alternate;
+  }
+
+  .box.used.landed .num {
+    color: #331100 !important;
+    font-size: clamp(0.7rem, 1.4vw, 1rem);
+    opacity: 1;
+  }
+
+  .box.used.landed .label {
+    color: #331100;
+    font-weight: 800;
+    font-size: clamp(0.7rem, 1.3vw, 1rem);
+  }
+
+  @keyframes pulse {
+    from {
+      box-shadow: 0 0 25px #ffaa00, 0 0 60px #ff6600;
+      transform: scale(1.3);
+    }
+    to {
+      box-shadow: 0 0 60px #ffcc00, 0 0 120px #ff6600, 0 0 160px rgba(255,102,0,0.5);
+      transform: scale(1.45);
+    }
+  }
+
+  .box.active {
+    background: #00ff88 !important;
+    box-shadow: 0 0 25px #00ff88, 0 0 50px #00ff88 inset !important;
+    transform: scale(1.08);
+    z-index: 5;
+  }
+
+  .box.active .num { color: #003322 !important; }
+
+  .box.decoy {
+    background: #ffcc00 !important;
+    box-shadow: 0 0 35px #ffcc00, 0 0 70px #ffcc00 inset !important;
+    animation: decoyPulse 0.6s ease-in-out infinite;
+    z-index: 6;
+  }
+
+  .box.decoy .num { color: #331100 !important; }
+
+  @keyframes decoyPulse {
+    0%, 100% {
+      transform: scale(1.12);
+      box-shadow: 0 0 30px #ffcc00, 0 0 60px #ffcc00 inset;
+    }
+    50% {
+      transform: scale(1.18);
+      box-shadow: 0 0 50px #ffcc00, 0 0 90px #ffcc00 inset;
+    }
+  }
+
+  .box.hesitating {
+    background: #ff0044 !important;
+    box-shadow: 0 0 30px #ff0044, 0 0 60px #ff0044 inset !important;
+    animation: shake 0.12s ease-in-out infinite;
+    z-index: 6;
+  }
+
+  .box.hesitating .num { color: #ffffff !important; }
+
+  @keyframes shake {
+    0%, 100% { transform: scale(1.1) translate(0, 0); }
+    25% { transform: scale(1.1) translate(-3px, 2px); }
+    75% { transform: scale(1.1) translate(3px, -2px); }
+  }
+
+  .box.backward {
+    background: #cc00ff !important;
+    box-shadow: 0 0 30px #cc00ff, 0 0 60px #cc00ff inset !important;
+    transform: scale(1.08);
+    z-index: 6;
+  }
+
+  .box.backward .num { color: #ffffff !important; }
+
+  /* Hide original num habang may flying clone */
+  .box.num-hidden .num {
+    opacity: 0 !important;
+  }
+
+  /* Box na tatanggap ng numero — mag-glow */
+  .box.receiving {
+    animation: receivingGlow 0.8s ease-in-out;
+    z-index: 15;
+  }
+
+  @keyframes receivingGlow {
+    0%, 100% {
+      box-shadow: 0 0 20px #ff00ff;
+      background: #1a1f2e;
+    }
+    50% {
+      box-shadow: 0 0 60px #ff00ff, 0 0 100px #ff00ff inset;
+      background: #ff00ff;
+    }
+  }
+
+  /* Box na nagpapadala — mag-glow */
+  .box.sending {
+    animation: sendingGlow 0.8s ease-in-out;
+    z-index: 15;
+  }
+
+  @keyframes sendingGlow {
+    0%, 100% {
+      box-shadow: 0 0 20px #00ffff;
+      background: #1a1f2e;
+    }
+    50% {
+      box-shadow: 0 0 60px #00ffff, 0 0 100px #00ffff inset;
+      background: #00ffff;
+    }
+  }
+
+  /* ============================================================
+     FLYING NUMBER — ito yung lumilipad!
+     Naka-position: fixed, dadaan sa screen
+     ============================================================ */
+  .flying-number {
+    position: fixed;
+    font-size: clamp(1.5rem, 3vw, 2.5rem);
+    font-weight: 900;
+    color: #ffffff;
+    text-shadow:
+      0 0 10px #ffffff,
+      0 0 20px #ff00ff,
+      0 0 30px #ff00ff,
+      0 0 40px #00ffff;
+    pointer-events: none;
+    z-index: 9999;
+    transition: none;
+    will-change: transform, opacity;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+  }
+
+  .flying-number::after {
+    content: '';
+    position: absolute;
+    inset: -20px;
+    background: radial-gradient(circle, rgba(255,0,255,0.6) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+    animation: trailPulse 0.3s infinite;
+  }
+
+  @keyframes trailPulse {
+    0%, 100% { opacity: 0.5; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.3); }
+  }
+
+  /* Trail particles */
+  .trail-particle {
+    position: fixed;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #ffffff, #ff00ff, transparent);
+    pointer-events: none;
+    z-index: 9998;
+    animation: trailFade 0.6s ease-out forwards;
+  }
+
+  @keyframes trailFade {
+    0% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(0);
+      opacity: 0;
+    }
+  }
+
+  .bottombar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 10px 16px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+
+  button {
+    padding: 10px 26px;
+    border: none;
+    border-radius: 30px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s, opacity 0.2s;
+    white-space: nowrap;
+  }
+
+  button:active { transform: scale(0.95); }
+
+  #spinBtn {
+    background: linear-gradient(135deg, #00ff88, #00cc66);
+    color: #003322;
+    box-shadow: 0 0 25px rgba(0,255,136,0.5);
+  }
+
+  #spinBtn:hover:not(:disabled) {
+    box-shadow: 0 0 40px rgba(0,255,136,0.8);
+    transform: translateY(-2px);
+  }
+
+  #spinBtn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  #resetBtn {
+    background: transparent;
+    color: #888;
+    border: 1px solid #444;
+  }
+
+  #resetBtn:hover:not(:disabled) { color: #fff; border-color: #888; }
+  #resetBtn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .zoom-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s;
+    z-index: 200;
+    cursor: pointer;
+  }
+
+  .zoom-overlay.show {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .zoom-box {
+    width: min(70vw, 70vh);
+    height: min(70vw, 70vh);
+    max-width: 600px;
+    max-height: 600px;
+    background: linear-gradient(135deg, #ffcc00, #ff6600);
+    border-radius: 24px;
+    box-shadow:
+      0 0 60px #ffaa00,
+      0 0 120px #ff6600,
+      0 0 200px rgba(255, 102, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    transform: scale(0.3);
+    transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    padding: 20px;
+    text-align: center;
+  }
+
+  .zoom-overlay.show .zoom-box {
+    transform: scale(1);
+  }
+
+  .zoom-box .zoom-num {
+    position: absolute;
+    top: 16px;
+    left: 20px;
+    font-size: clamp(1rem, 2vw, 1.4rem);
+    color: #331100;
+    font-weight: 800;
+    opacity: 0.7;
+  }
+
+  .zoom-box .zoom-label {
+    font-size: clamp(1.5rem, 5vw, 3.5rem);
+    color: #331100;
+    font-weight: 900;
+    letter-spacing: 1px;
+    line-height: 1.2;
+    text-shadow: 0 2px 4px rgba(255,255,255,0.3);
+    word-break: break-word;
+    padding: 0 20px;
+    animation: labelPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s both;
+  }
+
+  .zoom-box .zoom-hint {
+    position: absolute;
+    bottom: 20px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: clamp(0.7rem, 1.2vw, 0.95rem);
+    color: #331100;
+    opacity: 0.7;
+    font-weight: 600;
+    letter-spacing: 1px;
+    animation: hintPulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes hintPulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 0.9; }
+  }
+
+  @keyframes labelPop {
+    from { transform: scale(0.5); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .zoom-box::before {
+    content: '';
+    position: absolute;
+    inset: -50%;
+    background: conic-gradient(
+      from 0deg,
+      transparent 0deg,
+      rgba(255,255,255,0.3) 30deg,
+      transparent 60deg,
+      transparent 180deg,
+      rgba(255,255,255,0.3) 210deg,
+      transparent 240deg,
+      transparent 360deg
+    );
+    animation: sparkleSpin 4s linear infinite;
+    pointer-events: none;
+  }
+
+  @keyframes sparkleSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  @media (max-width: 600px) {
+    h1 { font-size: 0.9rem; letter-spacing: 1px; }
+    .status { font-size: 0.7rem; }
+    button { padding: 8px 18px; font-size: 0.85rem; }
+    .zoom-box { width: 85vw; height: 85vw; border-radius: 18px; }
+    .counter { font-size: 0.7rem; padding: 3px 8px; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="topbar">
+    <h1>BOX ROULETTE</h1>
+    <div class="counter" id="counter">0 / 50</div>
+    <div class="status" id="status">Press SPIN to start</div>
+  </div>
+
+  <div class="grid-wrap">
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <div class="bottombar">
+    <button id="spinBtn">▶ SPIN</button>
+    <button id="resetBtn">↻ RESET</button>
+  </div>
+
+  <div class="zoom-overlay" id="zoomOverlay">
+    <div class="zoom-box" id="zoomBox">
+      <div class="zoom-num" id="zoomNum">#1</div>
+      <div class="zoom-label" id="zoomLabel">🎁 +100 pts</div>
+      <div class="zoom-hint">Press ENTER or Click to close</div>
+    </div>
+  </div>
+
+<script>
+/* ============================================================
+   CONFIG
+   ============================================================ */
+const CONFIG = {
+  cols: 10,
+  rows: 5,
+
+  labels: [
+    "🎁 +100 pts", "💀 -50 pts", "🔄 Spin Again", "⭐ Jackpot!",
+    "😅 Dare: Sing", "🍀 Safe", "⚡ Double Next", "🚫 Skip Turn",
+    "🎯 +50 pts", "💣 Forfeit", "🕺 Dance 10s", "🤝 Trade Prize",
+    "🃏 Random", "🎈 Free Pass", "🔥 +200 pts", "❄️ Freeze",
+    "🎲 Roll Again", "👑 Winner!", "😴 Rest 1 min", "🎤 Karaoke"
+  ],
+
+  p1_interval: 50,
+  p1_duration: 4000,
+
+  p2_startInterval: 90,
+  p2_endInterval: 380,
+  p2_duration: 3500,
+
+  p3_interval: 500,
+  p3_steps: 2,
+  p3_holdTime: 1200,
+
+  p4_interval: 120,
+  p4_steps: 20,
+
+  p5_startInterval: 150,
+  p5_endInterval: 450,
+  p5_duration: 2500,
+
+  p6_interval: 700,
+  p6_steps: 2,
+
+  p7_interval: 450,
+  p7_steps: 3,
+
+  p8_hopInterval: 400,
+  p8_hopSteps: 2,
+
+  p9_hesitation: 1400,
+
+  freezeBeforeReveal: 1200,
+  zoomDelay: 600,
+
+  // ============ FLYING NUMBER SWAP ============
+  numberSwapEnabled: true,
+  numberSwapDelay: 800,        // pause bago mag-swap
+  numberFlightDuration: 1200,  // gaano katagal yung lipad (ms)
+  numberSwapSound: true,
+};
+/* ============================================================ */
+
+const gridEl = document.getElementById('grid');
+const spinBtn = document.getElementById('spinBtn');
+const resetBtn = document.getElementById('resetBtn');
+const statusEl = document.getElementById('status');
+const counterEl = document.getElementById('counter');
+const zoomOverlay = document.getElementById('zoomOverlay');
+const zoomBox = document.getElementById('zoomBox');
+const zoomNum = document.getElementById('zoomNum');
+const zoomLabel = document.getElementById('zoomLabel');
+
+let boxes = [];
+let activeIndex = 0;
+let landedIndex = -1;
+let isRunning = false;
+let isZoomOpen = false;
+let audioCtx = null;
+
+const usedIndices = new Set();
+
+/* ---------- Audio ---------- */
+function ensureAudio() {
+  if (!audioCtx) {
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    } catch (e) {}
+  }
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+function beep(freq = 800, duration = 0.05, type = 'square', vol = 0.06) {
+  try {
+    ensureAudio();
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.value = vol;
+    gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+  } catch (e) {}
+}
+
+function chime() {
+  beep(660, 0.2, 'sine', 0.12);
+  setTimeout(() => beep(990, 0.2, 'sine', 0.12), 140);
+  setTimeout(() => beep(1320, 0.5, 'sine', 0.14), 280);
+}
+
+function boing() {
+  beep(300, 0.15, 'sine', 0.1);
+  setTimeout(() => beep(500, 0.12, 'sine', 0.08), 70);
+}
+
+function tick() { beep(1200, 0.02, 'square', 0.025); }
+
+function heartbeat() {
+  beep(80, 0.12, 'sine', 0.15);
+  setTimeout(() => beep(70, 0.15, 'sine', 0.13), 180);
+}
+
+function tension() { beep(200, 0.3, 'sawtooth', 0.05); }
+
+function zoomSound() {
+  try {
+    ensureAudio();
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.5);
+    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.6);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.6);
+  } catch (e) {}
+}
+
+function closeSound() {
+  beep(600, 0.08, 'sine', 0.08);
+  setTimeout(() => beep(400, 0.1, 'sine', 0.06), 60);
+}
+
+function numberSwapSound() {
+  try {
+    ensureAudio();
+    if (!audioCtx) return;
+    const osc1 = audioCtx.createOscillator();
+    const gain1 = audioCtx.createGain();
+    osc1.type = 'sawtooth';
+    osc1.frequency.setValueAtTime(200, audioCtx.currentTime);
+    osc1.frequency.exponentialRampToValueAtTime(2000, audioCtx.currentTime + 0.5);
+    gain1.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    gain1.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.6);
+    osc1.connect(gain1);
+    gain1.connect(audioCtx.destination);
+    osc1.start();
+    osc1.stop(audioCtx.currentTime + 0.6);
+
+    setTimeout(() => {
+      const osc2 = audioCtx.createOscillator();
+      const gain2 = audioCtx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(1500, audioCtx.currentTime);
+      osc2.frequency.exponentialRampToValueAtTime(400, audioCtx.currentTime + 0.4);
+      gain2.gain.setValueAtTime(0.1, audioCtx.currentTime);
+      gain2.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.5);
+      osc2.connect(gain2);
+      gain2.connect(audioCtx.destination);
+      osc2.start();
+      osc2.stop(audioCtx.currentTime + 0.5);
+    }, 400);
+
+    setTimeout(() => {
+      beep(1800, 0.25, 'sine', 0.12);
+      setTimeout(() => beep(2400, 0.35, 'sine', 0.1), 80);
+    }, 900);
+  } catch (e) {}
+}
+
+/* ---------- Build Grid ---------- */
+function buildGrid() {
+  gridEl.innerHTML = '';
+  gridEl.style.gridTemplateColumns = `repeat(${CONFIG.cols}, 1fr)`;
+  gridEl.style.gridTemplateRows = `repeat(${CONFIG.rows}, 1fr)`;
+  boxes = [];
+  usedIndices.clear();
+
+  const total = CONFIG.cols * CONFIG.rows;
+  const shuffledLabels = shuffle([...CONFIG.labels]);
+  while (shuffledLabels.length < total) {
+    shuffledLabels.push(...shuffle([...CONFIG.labels]));
+  }
+
+  for (let i = 0; i < total; i++) {
+    const box = document.createElement('div');
+    box.className = 'box';
+    box.dataset.index = i;
+    box.dataset.label = shuffledLabels[i];
+
+    const num = document.createElement('span');
+    num.className = 'num';
+    num.textContent = i + 1;
+    box.appendChild(num);
+
+    gridEl.appendChild(box);
+    boxes.push(box);
+  }
+
+  updateCounter();
+}
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function resetMovementClasses() {
+  boxes.forEach(b => {
+    b.classList.remove('active', 'decoy', 'backward', 'hesitating', 'sending', 'receiving', 'num-hidden');
+  });
+}
+
+function fullReset() {
+  boxes.forEach(b => {
+    b.classList.remove('active', 'used', 'landed', 'hesitating', 'decoy', 'backward', 'sending', 'receiving', 'num-hidden');
+    const lbl = b.querySelector('.label');
+    if (lbl) lbl.remove();
+    b.style.transform = '';
+    b.style.zIndex = '';
+  });
+  // Tanggalin yung mga flying numbers
+  document.querySelectorAll('.flying-number, .trail-particle').forEach(el => el.remove());
+  usedIndices.clear();
+  activeIndex = 0;
+  landedIndex = -1;
+  gridEl.classList.remove('tension', 'shake', 'swapping');
+  closeZoom(true);
+  updateCounter();
+}
+
+function updateCounter() {
+  const total = boxes.length;
+  const used = usedIndices.size;
+  counterEl.textContent = `${used} / ${total}`;
+}
+
+function nextAvailableIndex(current, total) {
+  let next = current;
+  let safety = 0;
+  do {
+    next = (next + 1) % total;
+    safety++;
+  } while (usedIndices.has(next) && safety < total * 2);
+  return next;
+}
+
+function prevAvailableIndex(current, total) {
+  let prev = current;
+  let safety = 0;
+  do {
+    prev = (prev - 1 + total) % total;
+    safety++;
+  } while (usedIndices.has(prev) && safety < total * 2);
+  return prev;
+}
+
+function getRandomAvailableIndex(total) {
+  const available = [];
+  for (let i = 0; i < total; i++) {
+    if (!usedIndices.has(i)) available.push(i);
+  }
+  if (available.length === 0) return -1;
+  return available[Math.floor(Math.random() * available.length)];
+}
+
+function setActive(index) {
+  if (activeIndex >= 0 && boxes[activeIndex]) {
+    boxes[activeIndex].classList.remove('active', 'decoy', 'backward', 'hesitating');
+  }
+  activeIndex = index;
+  if (boxes[index]) {
+    boxes[index].classList.remove('decoy', 'backward', 'hesitating');
+    boxes[index].classList.add('active');
+  }
+}
+
+function revealBox(index) {
+  const box = boxes[index];
+  if (box.querySelector('.label')) return;
+  const label = document.createElement('div');
+  label.className = 'label';
+  label.textContent = box.dataset.label;
+  box.appendChild(label);
+}
+
+function sleep(ms) { return new Promise(res => setTimeout(res, ms)); }
+
+function setPhase(text, color = '#00ff88') {
+  statusEl.innerHTML = `Phase: <span class="phase" style="color:${color}">${text}</span>`;
+}
+
+/* ============================================================
+   FLYING NUMBER ANIMATION
+   Gumagawa ng clone ng numero, pinalilipad papunta sa target box
+   ============================================================ */
+function createTrailParticles(fromX, fromY, toX, toY, duration) {
+  const particleCount = 12;
+  const startTime = performance.now();
+
+  function spawnParticle() {
+    const now = performance.now();
+    const elapsed = now - startTime;
+    if (elapsed > duration) return;
+
+    const t = elapsed / duration;
+    // Easing: ease-in-out
+    const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+    const x = fromX + (toX - fromX) * eased;
+    const y = fromY + (toY - fromY) * eased - Math.sin(t * Math.PI) * 80; // arc
+
+    const particle = document.createElement('div');
+    particle.className = 'trail-particle';
+    particle.style.left = (x - 6) + 'px';
+    particle.style.top = (y - 6) + 'px';
+    particle.style.background = t < 0.5
+      ? 'radial-gradient(circle, #ffffff, #00ffff, transparent)'
+      : 'radial-gradient(circle, #ffffff, #ff00ff, transparent)';
+    document.body.appendChild(particle);
+
+    setTimeout(() => particle.remove(), 600);
+
+    requestAnimationFrame(spawnParticle);
+  }
+
+  spawnParticle();
+}
+
+async function performFlyingNumberSwap(landedIdx) {
+  const total = boxes.length;
+
+  // Kunin lahat ng available (hindi used) MALIBAN sa landedIdx
+  const available = [];
+  for (let i = 0; i < total; i++) {
+    if (!usedIndices.has(i) && i !== landedIdx) {
+      available.push(i);
+    }
+  }
+
+  if (available.length === 0) return;
+
+  // Pumili ng random na box
+  const randomIdx = available[Math.floor(Math.random() * available.length)];
+
+  const landedBox = boxes[landedIdx];
+  const randomBox = boxes[randomIdx];
+
+  const landedNum = landedBox.querySelector('.num');
+  const randomNum = randomBox.querySelector('.num');
+
+  const numA = landedNum.textContent; // numero ng hintoan
+  const numB = randomNum.textContent; // numero ng random box
+
+  // Kunin yung positions sa screen
+  const rectA = landedNum.getBoundingClientRect();
+  const rectB = randomNum.getBoundingClientRect();
+
+  // Center positions
+  const ax = rectA.left + rectA.width / 2;
+  const ay = rectA.top + rectA.height / 2;
+  const bx = rectB.left + rectB.width / 2;
+  const by = rectB.top + rectB.height / 2;
+
+  // Hide original numbers
+  landedBox.classList.add('num-hidden');
+  randomBox.classList.add('num-hidden');
+
+  // Add sending/receiving effects
+  landedBox.classList.add('sending');
+  randomBox.classList.add('receiving');
+
+  // Sound
+  if (CONFIG.numberSwapSound) numberSwapSound();
+
+  setPhase('LUMILIPAD! ✈️', '#ff00ff');
+
+  // ============ FLYING NUMBER A (from landed → random) ============
+  const flyA = document.createElement('div');
+  flyA.className = 'flying-number';
+  flyA.textContent = numA;
+  flyA.style.left = ax + 'px';
+  flyA.style.top = ay + 'px';
+  flyA.style.transform = 'translate(-50%, -50%) scale(1)';
+  document.body.appendChild(flyA);
+
+  // ============ FLYING NUMBER B (from random → landed) ============
+  const flyB = document.createElement('div');
+  flyB.className = 'flying-number';
+  flyB.textContent = numB;
+  flyB.style.left = bx + 'px';
+  flyB.style.top = by + 'px';
+  flyB.style.transform = 'translate(-50%, -50%) scale(1)';
+  document.body.appendChild(flyB);
+
+  // Trail particles
+  createTrailParticles(ax, ay, bx, by, CONFIG.numberFlightDuration);
+  createTrailParticles(bx, by, ax, ay, CONFIG.numberFlightDuration);
+
+  // Animate both flying numbers
+  const startTime = performance.now();
+
+  function animate(now) {
+    const elapsed = now - startTime;
+    const t = Math.min(elapsed / CONFIG.numberFlightDuration, 1);
+
+    // Easing: ease-in-out
+    const eased = t < 0.5
+      ? 2 * t * t
+      : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+    // Arc trajectory (parang tumatalon)
+    const arcHeight = 100;
+    const arc = Math.sin(t * Math.PI) * arcHeight;
+
+    // Flying A: from (ax, ay) to (bx, by)
+    const aX = ax + (bx - ax) * eased;
+    const aY = ay + (by - ay) * eased - arc;
+    flyA.style.left = aX + 'px';
+    flyA.style.top = aY + 'px';
+
+    // Flying B: from (bx, by) to (ax, ay)
+    const bX = bx + (ax - bx) * eased;
+    const bY = by + (ay - by) * eased - arc;
+    flyB.style.left = bX + 'px';
+    flyB.style.top = bY + 'px';
+
+    // Scale effect — lumalaki sa gitna, bumabalik sa dulo
+    const scale = 1 + Math.sin(t * Math.PI) * 0.8;
+    // Rotate effect
+    const rotation = t * 720;
+
+    flyA.style.transform = `translate(-50%, -50%) scale(${scale}) rotate(${rotation}deg)`;
+    flyB.style.transform = `translate(-50%, -50%) scale(${scale}) rotate(-${rotation}deg)`;
+
+    // Opacity — fade out sa dulo
+    flyA.style.opacity = t > 0.85 ? String((1 - t) / 0.15) : '1';
+    flyB.style.opacity = t > 0.85 ? String((1 - t) / 0.15) : '1';
+
+    if (t < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      // Animation done — swap the actual numbers
+      landedNum.textContent = numB;
+      randomNum.textContent = numA;
+
+      // Show original numbers
+      landedBox.classList.remove('num-hidden');
+      randomBox.classList.remove('num-hidden');
+
+      // Remove flying numbers
+      flyA.remove();
+      flyB.remove();
+
+      // Remove effects after a bit
+      setTimeout(() => {
+        landedBox.classList.remove('sending');
+        randomBox.classList.remove('receiving');
+      }, 300);
+    }
+  }
+
+  requestAnimationFrame(animate);
+
+  // Wait for animation to finish
+  await sleep(CONFIG.numberFlightDuration + 100);
+}
+
+function openZoom(index) {
+  const box = boxes[index];
+  const label = box.dataset.label;
+  const num = box.querySelector('.num').textContent;
+
+  zoomNum.textContent = `#${num}`;
+  zoomLabel.textContent = label;
+
+  zoomBox.style.transition = 'none';
+  zoomBox.style.transform = 'scale(0.3)';
+  void zoomBox.offsetWidth;
+  zoomBox.style.transition = '';
+
+  zoomOverlay.classList.add('show');
+  isZoomOpen = true;
+  zoomSound();
+}
+
+function closeZoom(instant = false) {
+  if (!isZoomOpen) return;
+  if (!instant) closeSound();
+  zoomOverlay.classList.remove('show');
+  isZoomOpen = false;
+}
+
+/* ============================================================
+   MAIN SPIN
+   ============================================================ */
+async function runSpin() {
+  if (isRunning || isZoomOpen) return;
+  ensureAudio();
+
+  const total = boxes.length;
+
+  if (usedIndices.size >= total) {
+    setPhase('ALL USED — RESET', '#ff6600');
+    return;
+  }
+
+  isRunning = true;
+  spinBtn.disabled = true;
+  resetBtn.disabled = true;
+
+  boxes.forEach(b => b.classList.remove('landed'));
+  resetMovementClasses();
+  gridEl.classList.remove('tension', 'shake', 'swapping');
+  await sleep(100);
+
+  let startIdx = getRandomAvailableIndex(total);
+  if (startIdx === -1) {
+    isRunning = false;
+    spinBtn.disabled = false;
+    resetBtn.disabled = false;
+    return;
+  }
+
+  setActive(startIdx);
+  await sleep(200);
+
+  // PHASE 1: FAST
+  setPhase('FAST ⚡', '#00ff88');
+  const p1End = Date.now() + CONFIG.p1_duration;
+  while (Date.now() < p1End) {
+    setActive(nextAvailableIndex(activeIndex, total));
+    tick();
+    await sleep(CONFIG.p1_interval);
+  }
+
+  // PHASE 2: BUMAGAL
+  setPhase('SLOWING 🐢', '#88ff00');
+  const p2End = Date.now() + CONFIG.p2_duration;
+  let interval = CONFIG.p2_startInterval;
+  const intervalStep = (CONFIG.p2_endInterval - CONFIG.p2_startInterval)
+                      / (CONFIG.p2_duration / CONFIG.p2_startInterval);
+  while (Date.now() < p2End) {
+    interval += intervalStep;
+    setActive(nextAvailableIndex(activeIndex, total));
+    tick();
+    await sleep(interval);
+  }
+
+  // PHASE 3: DECOY STOP
+  setPhase('ALMOST... 😳', '#ffcc00');
+  for (let i = 0; i < CONFIG.p3_steps; i++) {
+    setActive(nextAvailableIndex(activeIndex, total));
+    beep(500, 0.05, 'square', 0.05);
+    await sleep(CONFIG.p3_interval);
+  }
+
+  setPhase('HINTO? 🤔', '#ffcc00');
+  const decoyIndex = activeIndex;
+  boxes[decoyIndex].classList.remove('active');
+  boxes[decoyIndex].classList.add('decoy');
+
+  const hbInterval1 = setInterval(() => heartbeat(), 400);
+  await sleep(CONFIG.p3_holdTime);
+  clearInterval(hbInterval1);
+
+  boxes[decoyIndex].classList.remove('decoy');
+
+  // PHASE 4: FAKE OUT
+  setPhase('WAIT... ⚡', '#ff6600');
+  gridEl.classList.add('tension');
+  boing();
+  await sleep(150);
+
+  for (let i = 0; i < CONFIG.p4_steps; i++) {
+    setActive(nextAvailableIndex(activeIndex, total));
+    tick();
+    await sleep(CONFIG.p4_interval);
+  }
+
+  // PHASE 5: BUMAGAL ULIT
+  setPhase('SLOWING 🐢', '#88ff00');
+  const p5End = Date.now() + CONFIG.p5_duration;
+  let interval5 = CONFIG.p5_startInterval;
+  const intervalStep5 = (CONFIG.p5_endInterval - CONFIG.p5_startInterval)
+                       / (CONFIG.p5_duration / CONFIG.p5_startInterval);
+  while (Date.now() < p5End) {
+    interval5 += intervalStep5;
+    setActive(nextAvailableIndex(activeIndex, total));
+    tick();
+    await sleep(interval5);
+  }
+
+  // PHASE 6: ALMOST STOP
+  setPhase('ALMOST... 😳', '#ffcc00');
+  for (let i = 0; i < CONFIG.p6_steps; i++) {
+    setActive(nextAvailableIndex(activeIndex, total));
+    beep(500, 0.05, 'square', 0.05);
+    await sleep(CONFIG.p6_interval);
+  }
+
+  // PHASE 7: BACKWARD
+  setPhase('BACKWARD ↩', '#cc00ff');
+  gridEl.classList.add('tension');
+  for (let i = 0; i < CONFIG.p7_steps; i++) {
+    const prev = prevAvailableIndex(activeIndex, total);
+    if (boxes[activeIndex]) boxes[activeIndex].classList.remove('active', 'backward');
+    activeIndex = prev;
+    if (boxes[prev]) {
+      boxes[prev].classList.remove('active', 'decoy');
+      boxes[prev].classList.add('backward');
+    }
+    boing();
+    await sleep(CONFIG.p7_interval);
+  }
+
+  if (boxes[activeIndex]) boxes[activeIndex].classList.remove('backward');
+
+  // PHASE 8: FINAL HOP
+  setPhase('FINAL HOP 🦘', '#00ccff');
+  for (let i = 0; i < CONFIG.p8_hopSteps; i++) {
+    setActive(nextAvailableIndex(activeIndex, total));
+    boing();
+    await sleep(CONFIG.p8_hopInterval);
+  }
+
+  // PHASE 9: HESITATION
+  setPhase('HESITATING... 💓', '#ff0044');
+  const finalIndex = activeIndex;
+  if (boxes[finalIndex]) {
+    boxes[finalIndex].classList.remove('active');
+    boxes[finalIndex].classList.add('hesitating');
+  }
+  gridEl.classList.add('shake');
+  const hbInterval2 = setInterval(() => heartbeat(), 400);
+  await sleep(CONFIG.p9_hesitation);
+  clearInterval(hbInterval2);
+  if (boxes[finalIndex]) boxes[finalIndex].classList.remove('hesitating');
+  gridEl.classList.remove('shake');
+
+  // ============ PHASE 10: HINTO — akala mo tapos na ============
+  setPhase('HINTO... 🤔', '#ffffff');
+  landedIndex = finalIndex;
+
+  await sleep(CONFIG.numberSwapDelay);
+
+  // ============ PHASE 11: FLYING NUMBER SWAP ============
+  if (CONFIG.numberSwapEnabled) {
+    await performFlyingNumberSwap(landedIndex);
+    await sleep(300);
+  }
+
+  // ============ PHASE 12: FINAL REVEAL ============
+  setPhase('...', '#ffffff');
+
+  usedIndices.add(landedIndex);
+  boxes[landedIndex].classList.add('used');
+  boxes[landedIndex].classList.add('landed');
+  boxes[landedIndex].classList.remove('active', 'decoy', 'backward', 'hesitating');
+
+  revealBox(landedIndex);
+
+  gridEl.classList.remove('tension', 'swapping');
+  tension();
+
+  updateCounter();
+
+  await sleep(CONFIG.freezeBeforeReveal);
+
+  chime();
+  setPhase('STOPPED ✅', '#00ff88');
+
+  await sleep(CONFIG.zoomDelay);
+  openZoom(landedIndex);
+
+  isRunning = false;
+  spinBtn.disabled = false;
+  resetBtn.disabled = false;
+}
+
+/* ---------- EVENTS ---------- */
+spinBtn.addEventListener('click', runSpin);
+
+resetBtn.addEventListener('click', () => {
+  if (isRunning) return;
+  fullReset();
+  buildGrid();
+  setPhase('Ready', '#888');
+  statusEl.innerHTML = 'Press SPIN to start';
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && isZoomOpen) {
+    e.preventDefault();
+    closeZoom();
+  }
+  if (e.key === ' ' && !isZoomOpen && !isRunning) {
+    e.preventDefault();
+    runSpin();
+  }
+});
+
+zoomOverlay.addEventListener('click', () => closeZoom());
+
+buildGrid();
+</script>
+</body>
+</html>
